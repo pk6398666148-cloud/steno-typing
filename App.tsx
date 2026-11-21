@@ -1,5 +1,9 @@
 
 import React, { useEffect, useMemo, useState } from "react";
+import * as pdfjs from "pdfjs-dist";
+import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+
+pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 type Passage = {
   id: number;
@@ -18,29 +22,29 @@ type Session = {
 const topics = [
   ["SSC English", "Education", "Education gives people the knowledge and confidence to build a better future. Students should develop discipline, read regularly and practise their skills. Hard work and determination help them achieve their goals."],
   ["SSC English", "Discipline", "Discipline is an important quality in every person's life. It teaches us to respect time, follow rules and complete our responsibilities. A disciplined person can overcome difficulties through patience and regular effort."],
-  ["Government", "Public Service", "Public service is an important responsibility of the government. Public institutions work to provide essential facilities, maintain public welfare and support the development of society. Citizens should cooperate and perform their duties honestly."],
-  ["Government", "Indian Democracy", "Democracy gives citizens the right to participate in the government of their country. Every eligible voter should understand the importance of elections. A strong democracy depends on awareness, equality and responsible participation."],
-  ["Current Affairs", "Technology", "Technology has changed the way people communicate, learn and work. Digital services make information more accessible and help organisations improve their efficiency. However, technology should be used carefully and responsibly."],
-  ["Current Affairs", "Environment", "Environmental protection is necessary for a healthy future. Air pollution, water pollution and deforestation affect people, animals and plants. Everyone can contribute by saving resources and keeping their surroundings clean."],
-  ["General English", "Time Management", "Time management helps people complete important tasks in an organised manner. A clear schedule reduces confusion and improves productivity. Setting priorities and avoiding unnecessary distractions can make daily work more effective."],
-  ["General English", "Communication", "Good communication is essential in personal and professional life. A clear message helps people understand one another and work together. Listening carefully is just as important as expressing ideas confidently."],
-  ["News Practice", "National Development", "The development of a nation depends on education, infrastructure, healthcare and employment opportunities. Public participation and effective policies can improve living standards. Long-term progress requires cooperation between institutions and citizens."],
-  ["News Practice", "Economic Growth", "Economic growth creates opportunities for businesses and workers. Investment, innovation and skill development support productivity. A stable economy can improve employment prospects and contribute to the overall welfare of society."]
+  ["Government", "Public Service", "Public service is an important responsibility of the government. Public institutions work to provide essential facilities, maintain public welfare and support the development of society."],
+  ["Government", "Indian Democracy", "Democracy gives citizens the right to participate in the government of their country. Every eligible voter should understand the importance of elections. A strong democracy depends on awareness and equality."],
+  ["Current Affairs", "Technology", "Technology has changed the way people communicate, learn and work. Digital services make information more accessible and help organisations improve their efficiency."],
+  ["Current Affairs", "Environment", "Environmental protection is necessary for a healthy future. Air pollution, water pollution and deforestation affect people, animals and plants. Everyone can contribute by saving resources."],
+  ["General English", "Time Management", "Time management helps people complete important tasks in an organised manner. A clear schedule reduces confusion and improves productivity."],
+  ["General English", "Communication", "Good communication is essential in personal and professional life. A clear message helps people understand one another and work together."],
+  ["News Practice", "National Development", "The development of a nation depends on education, infrastructure, healthcare and employment opportunities. Public participation and effective policies can improve living standards."],
+  ["News Practice", "Economic Growth", "Economic growth creates opportunities for businesses and workers. Investment, innovation and skill development support productivity."]
 ];
 
 const variations = [
-  "Regular practice improves knowledge and develops confidence. People should remain focused, learn from experience and continue making progress. Small improvements made every day can produce valuable results over time.",
-  "It is important to understand the challenges and find practical solutions. Cooperation, planning and dedication help individuals complete their responsibilities. Every successful effort begins with a clear objective.",
-  "Modern society requires people to remain informed and adaptable. New opportunities appear when individuals develop useful skills. Patience and consistent effort are essential for achieving meaningful progress.",
-  "A responsible approach creates positive results for individuals and society. Everyone should respect the rights of others and contribute to common goals. Honesty and commitment build trust.",
-  "The future depends on the decisions we make today. We should use our time wisely, respect our responsibilities and work towards improvement. Knowledge and determination are valuable tools for success."
+  "Regular practice improves knowledge and develops confidence. People should remain focused, learn from experience and continue making progress.",
+  "It is important to understand challenges and find practical solutions. Cooperation, planning and dedication help individuals complete their responsibilities.",
+  "Modern society requires people to remain informed and adaptable. New opportunities appear when individuals develop useful skills.",
+  "A responsible approach creates positive results for individuals and society. Everyone should respect the rights of others and contribute to common goals.",
+  "The future depends on the decisions we make today. We should use our time wisely, respect our responsibilities and work towards improvement."
 ];
 
-const passages: Passage[] = topics.flatMap((topic, topicIndex) =>
-  variations.map((variation, variationIndex) => ({
-    id: topicIndex * 5 + variationIndex + 1,
+const passages: Passage[] = topics.flatMap((topic, i) =>
+  variations.map((variation, j) => ({
+    id: i * 5 + j + 1,
     category: topic[0],
-    title: `${topic[1]} - Practice ${variationIndex + 1}`,
+    title: `${topic[1]} - Practice ${j + 1}`,
     text: `${topic[2]} ${variation}`
   }))
 );
@@ -48,6 +52,7 @@ const passages: Passage[] = topics.flatMap((topic, topicIndex) =>
 const categories = ["All", ...Array.from(new Set(passages.map(p => p.category)))];
 
 export default function App() {
+  const [page, setPage] = useState("Practice");
   const [selected, setSelected] = useState(1);
   const [category, setCategory] = useState("All");
   const [search, setSearch] = useState("");
@@ -57,7 +62,11 @@ export default function App() {
   const [typed, setTyped] = useState("");
   const [started, setStarted] = useState(false);
   const [dark, setDark] = useState(false);
-  const [page, setPage] = useState("Practice");
+
+  const [pdfText, setPdfText] = useState("");
+  const [pdfName, setPdfName] = useState("");
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState("");
 
   const [history, setHistory] = useState<Session[]>(() => {
     try {
@@ -68,6 +77,7 @@ export default function App() {
   });
 
   const passage = passages.find(p => p.id === selected) || passages[0];
+  const activeText = page === "Upload PDF" ? pdfText : passage.text;
 
   const filtered = useMemo(() => passages.filter(p =>
     (category === "All" || p.category === category) &&
@@ -76,10 +86,11 @@ export default function App() {
   ), [category, search]);
 
   const elapsed = Math.max(1, duration * 60 - remaining);
-  const correct = [...typed].filter((c, i) => c === passage.text[i]).length;
+  const correct = [...typed].filter((c, i) => c === activeText[i]).length;
   const errors = typed.length - correct;
   const accuracy = typed.length ? Math.round(correct / typed.length * 100) : 100;
   const wpm = Math.round(correct / 5 / (elapsed / 60));
+
   const best = history.length ? Math.max(...history.map(s => s.wpm)) : 0;
   const average = history.length
     ? Math.round(history.reduce((sum, s) => sum + s.wpm, 0) / history.length)
@@ -98,12 +109,14 @@ export default function App() {
   }, [started]);
 
   useEffect(() => {
-    if (remaining === 0 && started) {
-      setStarted(false);
-    }
+    if (remaining === 0 && started) finishTest();
   }, [remaining, started]);
 
   function startTest() {
+    if (!activeText.trim()) {
+      alert("Please select a passage or upload a PDF first.");
+      return;
+    }
     setTyped("");
     setRemaining(duration * 60);
     setStarted(true);
@@ -111,26 +124,69 @@ export default function App() {
 
   function finishTest() {
     if (typed.length > 0) {
-      const session: Session = {
+      setHistory(old => [{
         date: new Date().toLocaleString(),
         wpm,
         accuracy,
         duration: elapsed
-      };
-      setHistory(old => [session, ...old].slice(0, 100));
+      }, ...old].slice(0, 100));
     }
     setStarted(false);
   }
 
-  function changePassage(id: number) {
-    if (started) return;
-    setSelected(id);
-    setTyped("");
-    setRemaining(duration * 60);
-  }
-
   function formatTime(seconds: number) {
     return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  }
+
+  async function uploadPDF(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setPdfError("Please select a PDF file.");
+      return;
+    }
+
+    setPdfError("");
+    setPdfText("");
+    setTyped("");
+    setPdfLoading(true);
+    setStarted(false);
+    setPdfName(file.name);
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({
+        data: new Uint8Array(buffer)
+      }).promise;
+
+      let extracted = "";
+
+      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+        const pageData = await pdf.getPage(pageNumber);
+        const content = await pageData.getTextContent();
+
+        const pageText = content.items
+          .map(item => "str" in item ? item.str : "")
+          .filter(Boolean)
+          .join(" ");
+
+        extracted += pageText + "\n\n";
+      }
+
+      extracted = extracted.replace(/[ \t]+/g, " ").trim();
+
+      if (!extracted) {
+        setPdfError("No selectable text was found. This may be a scanned PDF. Please use a text-based PDF.");
+      } else {
+        setPdfText(extracted);
+      }
+    } catch {
+      setPdfError("Unable to read this PDF. Please try another PDF file.");
+    } finally {
+      setPdfLoading(false);
+      event.target.value = "";
+    }
   }
 
   const bg = dark ? "#101827" : "#f3f5fa";
@@ -174,32 +230,29 @@ export default function App() {
       minHeight: "100vh",
       background: bg,
       color: text,
-      fontFamily: "Inter, Arial, sans-serif",
-      transition: "0.2s"
+      fontFamily: "Arial, sans-serif"
     }}>
       <style>{`
         * { box-sizing: border-box; }
         button:disabled { opacity: .5; cursor: not-allowed; }
-        button:hover:not(:disabled) { filter: brightness(1.08); }
-        textarea:focus, input:focus, select:focus { outline: 2px solid #7894ef; }
-        .layout { display: flex; min-height: 100vh; }
-        .sidebar { width: 225px; padding: 25px 16px; border-right: 1px solid ${border}; background: ${card}; flex-shrink: 0; }
-        .content { max-width: 1150px; width: 100%; margin: auto; padding: 28px; }
-        .nav { display: block; width: 100%; text-align: left; border: 0; background: transparent; color: ${muted}; padding: 13px; border-radius: 9px; margin: 5px 0; cursor: pointer; font-size: 14px; }
-        .nav.active { background: ${dark ? "#30466b" : "#edf1ff"}; color: ${dark ? "#fff" : blue}; font-weight: bold; }
-        .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin: 20px 0; }
-        .mainGrid { display: grid; grid-template-columns: 1fr 290px; gap: 18px; align-items: start; }
-        .passageList { max-height: 480px; overflow-y: auto; }
-        .passageItem { display: block; width: 100%; text-align: left; padding: 12px; border: 1px solid ${border}; border-radius: 9px; background: transparent; color: ${text}; margin: 8px 0; cursor: pointer; }
-        .passageItem.selected { border-color: ${blue}; background: ${dark ? "#263957" : "#f0f3ff"}; }
-        @media(max-width: 760px) {
-          .layout { display: block; }
-          .sidebar { width: 100%; display: flex; overflow-x: auto; padding: 10px; border-right: 0; border-bottom: 1px solid ${border}; }
-          .sidebar h2, .sidebar p { display: none; }
-          .nav { width: auto; white-space: nowrap; margin: 0 4px; }
-          .content { padding: 16px; }
-          .stats { grid-template-columns: repeat(2,1fr); }
-          .mainGrid { grid-template-columns: 1fr; }
+        .layout { display:flex; min-height:100vh; }
+        .sidebar { width:225px; padding:25px 16px; border-right:1px solid ${border}; background:${card}; flex-shrink:0; }
+        .content { max-width:1150px; width:100%; margin:auto; padding:28px; }
+        .nav { display:block; width:100%; text-align:left; border:0; background:transparent; color:${muted}; padding:13px; border-radius:9px; margin:5px 0; cursor:pointer; }
+        .nav.active { background:${dark ? "#30466b" : "#edf1ff"}; color:${dark ? "#fff" : blue}; font-weight:bold; }
+        .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:20px 0; }
+        .mainGrid { display:grid; grid-template-columns:1fr 290px; gap:18px; align-items:start; }
+        .passageList { max-height:400px; overflow-y:auto; }
+        .passageItem { display:block; width:100%; text-align:left; padding:12px; border:1px solid ${border}; border-radius:9px; background:transparent; color:${text}; margin:8px 0; cursor:pointer; }
+        .passageItem.selected { border-color:${blue}; background:${dark ? "#263957" : "#f0f3ff"}; }
+        @media(max-width:760px) {
+          .layout { display:block; }
+          .sidebar { width:100%; display:flex; overflow-x:auto; padding:10px; }
+          .sidebar h2,.sidebar p { display:none; }
+          .nav { width:auto; white-space:nowrap; }
+          .content { padding:16px; }
+          .stats { grid-template-columns:repeat(2,1fr); }
+          .mainGrid { grid-template-columns:1fr; }
         }
       `}</style>
 
@@ -210,13 +263,13 @@ export default function App() {
             <p style={{ fontSize: 11, color: muted }}>TYPING PRACTICE STUDIO</p>
           </div>
 
-          {["Dashboard", "Practice", "History"].map(item => (
-            <button
-              key={item}
-              className={`nav ${page === item ? "active" : ""}`}
-              onClick={() => setPage(item)}
-            >
-              {item === "Dashboard" ? "▦" : item === "Practice" ? "⌨" : "◷"}　{item}
+          {["Dashboard", "Practice", "Upload PDF", "History"].map(item => (
+            <button key={item} className={`nav ${page === item ? "active" : ""}`} onClick={() => {
+              if (started) finishTest();
+              setPage(item);
+              setTyped("");
+            }}>
+              {item === "Dashboard" ? "▦" : item === "Practice" ? "⌨" : item === "Upload PDF" ? "📄" : "◷"}　{item}
             </button>
           ))}
 
@@ -224,16 +277,12 @@ export default function App() {
             YOUR TARGET
             <h2 style={{ color: text }}>{target} <small style={{ fontSize: 12 }}>WPM</small></h2>
             <select style={input} value={target} onChange={e => setTarget(Number(e.target.value))}>
-              <option value={40}>40 WPM</option>
-              <option value={60}>60 WPM</option>
-              <option value={80}>80 WPM</option>
-              <option value={100}>100 WPM</option>
-              <option value={120}>120 WPM</option>
+              {[40, 60, 80, 100, 120].map(n => <option key={n} value={n}>{n} WPM</option>)}
             </select>
           </div>
 
           <button className="nav" onClick={() => setDark(!dark)} style={{ marginTop: 25 }}>
-            {dark ? "☀" : "☾"}　{dark ? "Light mode" : "Dark mode"}
+            {dark ? "☀ Light mode" : "☾ Dark mode"}
           </button>
         </aside>
 
@@ -241,7 +290,7 @@ export default function App() {
           <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div>
               <p style={{ color: muted, margin: "0 0 5px", fontSize: 13 }}>YOUR PERSONAL PRACTICE SPACE</p>
-              <h1 style={{ margin: 0, fontSize: 27 }}>{page === "History" ? "Practice History" : page === "Dashboard" ? "Your Dashboard" : "Typing Practice"}</h1>
+              <h1 style={{ margin: 0, fontSize: 27 }}>{page}</h1>
             </div>
             <div style={{ background: card, border: `1px solid ${border}`, borderRadius: 10, padding: 11, color: muted, fontSize: 13 }}>
               ✦ Daily improvement starts here
@@ -250,107 +299,124 @@ export default function App() {
 
           <section className="stats">
             {[
-              ["Personal Best", `${best} WPM`, "🏆"],
-              ["Average Speed", `${average} WPM`, "⚡"],
-              ["Tests Completed", String(history.length), "📝"],
-              ["Current Accuracy", `${accuracy}%`, "◎"]
-            ].map(([label, value, symbol]) => (
+              ["Personal Best", `${best} WPM`],
+              ["Average Speed", `${average} WPM`],
+              ["Tests Completed", String(history.length)],
+              ["Current Accuracy", `${accuracy}%`]
+            ].map(([label, value]) => (
               <div key={label} style={panel}>
-                <div style={{ color: muted, fontSize: 13 }}>{symbol}　{label}</div>
+                <div style={{ color: muted, fontSize: 13 }}>{label}</div>
                 <h2 style={{ margin: "12px 0 0", fontSize: 25 }}>{value}</h2>
               </div>
             ))}
           </section>
 
-          {page === "Practice" && (
+          {(page === "Practice" || page === "Upload PDF") && (
             <div className="mainGrid">
               <section style={panel}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <div>
-                    <p style={{ color: muted, fontSize: 12, margin: "0 0 5px" }}>PRACTICE SESSION</p>
-                    <h2 style={{ margin: 0 }}>{passage.title}</h2>
-                  </div>
-                  <span style={{ color: blue, fontWeight: 600, fontSize: 13 }}>{passage.category}</span>
-                </div>
+                {page === "Upload PDF" ? (
+                  <>
+                    <h2 style={{ marginTop: 0 }}>Upload your PDF</h2>
+                    <p style={{ color: muted, fontSize: 14 }}>
+                      Choose a text-based PDF. Its text will be extracted in your browser.
+                    </p>
+                    <label style={{
+                      display: "block",
+                      border: `2px dashed ${blue}`,
+                      borderRadius: 12,
+                      padding: 25,
+                      textAlign: "center",
+                      cursor: "pointer",
+                      background: dark ? "#142237" : "#f5f7fc"
+                    }}>
+                      <div style={{ fontSize: 35 }}>📄</div>
+                      <strong>Select PDF file</strong>
+                      <p style={{ color: muted, fontSize: 12 }}>PDF files only</p>
+                      <input type="file" accept=".pdf,application/pdf" onChange={uploadPDF} style={{ display: "none" }} />
+                    </label>
 
-                <div style={{
-                  marginTop: 18,
-                  padding: 18,
-                  borderRadius: 11,
-                  background: dark ? "#142237" : "#f5f7fc",
-                  lineHeight: 2,
-                  fontSize: 17
-                }}>
-                  {passage.text.split("").map((char, index) => {
-                    const typedChar = typed[index];
-                    let color = text;
-                    let background = "transparent";
-                    if (typedChar !== undefined) {
-                      color = typedChar === char ? "#24a36b" : "#e24d59";
-                      background = typedChar === char
-                        ? (dark ? "#183e37" : "#e1f6eb")
-                        : (dark ? "#512a38" : "#ffe8eb");
-                    }
-                    return <span key={index} style={{ color, background }}>{char}</span>;
-                  })}
-                </div>
+                    {pdfLoading && <p style={{ color: blue }}>Reading your PDF... Please wait.</p>}
+                    {pdfName && <p style={{ color: muted, fontSize: 13 }}>Selected: {pdfName}</p>}
+                    {pdfError && <p style={{ color: "#e25b63" }}>{pdfError}</p>}
+                    {pdfText && (
+                      <p style={{ color: "#24a36b", fontSize: 13 }}>
+                        PDF text extracted successfully. {pdfText.length} characters found.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p style={{ color: muted, fontSize: 12 }}>PRACTICE SESSION</p>
+                    <h2 style={{ marginTop: 0 }}>{passage.title}</h2>
+                    <span style={{ color: blue, fontSize: 13 }}>{passage.category}</span>
+                  </>
+                )}
 
-                <textarea
-                  value={typed}
-                  disabled={!started}
-                  maxLength={passage.text.length}
-                  onChange={e => setTyped(e.target.value)}
-                  placeholder={started ? "Start typing the passage here..." : "Press Start Test to begin typing"}
-                  rows={5}
-                  style={{ ...input, marginTop: 16, lineHeight: 1.8, resize: "vertical", fontSize: 16 }}
-                />
+                {activeText && (
+                  <>
+                    <div style={{
+                      marginTop: 18,
+                      padding: 18,
+                      borderRadius: 11,
+                      background: dark ? "#142237" : "#f5f7fc",
+                      lineHeight: 2,
+                      fontSize: 16,
+                      maxHeight: 350,
+                      overflowY: "auto",
+                      whiteSpace: "pre-wrap"
+                    }}>
+                      {activeText.split("").map((char, index) => {
+                        const typedChar = typed[index];
+                        const right = typedChar === undefined || typedChar === char;
+                        return (
+                          <span key={index} style={{
+                            color: typedChar === undefined ? text : right ? "#24a36b" : "#e24d59",
+                            background: typedChar === undefined ? "transparent" : right ? (dark ? "#183e37" : "#e1f6eb") : (dark ? "#512a38" : "#ffe8eb")
+                          }}>{char}</span>
+                        );
+                      })}
+                    </div>
 
-                <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-                  <button style={button} onClick={startTest}>▶ Start Test</button>
-                  <button style={{ ...button, background: "#dc5964" }} onClick={finishTest} disabled={!started}>Finish Test</button>
-                  <button style={{ ...button, background: dark ? "#34445b" : "#e8ebf3", color: text }} onClick={() => { setTyped(""); setStarted(false); setRemaining(duration * 60); }} disabled={started}>Reset</button>
-                </div>
+                    <textarea
+                      value={typed}
+                      disabled={!started}
+                      maxLength={activeText.length}
+                      onChange={e => setTyped(e.target.value)}
+                      placeholder={started ? "Start typing the passage here..." : "Press Start Test to begin"}
+                      rows={6}
+                      style={{ ...input, marginTop: 16, lineHeight: 1.8, resize: "vertical", fontSize: 16 }}
+                    />
 
-                <p style={{ color: muted, fontSize: 12, marginTop: 14 }}>
-                  Tip: Type carefully. Accuracy is just as important as speed.
-                </p>
+                    <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                      <button style={button} onClick={startTest}>▶ Start Test</button>
+                      <button style={{ ...button, background: "#dc5964" }} onClick={finishTest} disabled={!started}>Finish Test</button>
+                      <button style={{ ...button, background: dark ? "#34445b" : "#e8ebf3", color: text }} disabled={started} onClick={() => { setTyped(""); setRemaining(duration * 60); }}>Reset</button>
+                    </div>
+                  </>
+                )}
               </section>
 
               <aside style={{ display: "flex", flexDirection: "column", gap: 15 }}>
                 <section style={panel}>
-                  <p style={{ color: muted, fontSize: 12, margin: "0 0 6px" }}>TIME REMAINING</p>
+                  <p style={{ color: muted, fontSize: 12 }}>TIME REMAINING</p>
                   <h1 style={{ fontSize: 38, margin: "5px 0 18px", color: blue }}>{formatTime(remaining)}</h1>
                   <label style={{ fontSize: 13, color: muted }}>Test duration</label>
-                  <select
-                    style={{ ...input, marginTop: 7 }}
-                    disabled={started}
-                    value={duration}
-                    onChange={e => {
-                      const value = Number(e.target.value);
-                      setDuration(value);
-                      setRemaining(value * 60);
-                    }}
-                  >
-                    <option value={1}>1 minute</option>
-                    <option value={3}>3 minutes</option>
-                    <option value={5}>5 minutes</option>
-                    <option value={10}>10 minutes</option>
+                  <select style={{ ...input, marginTop: 7 }} disabled={started} value={duration} onChange={e => {
+                    const value = Number(e.target.value);
+                    setDuration(value);
+                    setRemaining(value * 60);
+                  }}>
+                    {[1, 3, 5, 10].map(n => <option key={n} value={n}>{n} minute{n > 1 ? "s" : ""}</option>)}
                   </select>
                 </section>
 
                 <section style={panel}>
-                  <p style={{ color: muted, fontSize: 12, margin: "0 0 5px" }}>LIVE PERFORMANCE</p>
-                  <div style={{ display: "flex", justifyContent: "space-between", margin: "15px 0" }}>
-                    <span>Speed</span><strong style={{ color: blue }}>{wpm} WPM</strong>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", margin: "15px 0" }}>
-                    <span>Accuracy</span><strong>{accuracy}%</strong>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", margin: "15px 0" }}>
-                    <span>Errors</span><strong style={{ color: "#e25b63" }}>{errors}</strong>
-                  </div>
+                  <p style={{ color: muted, fontSize: 12 }}>LIVE PERFORMANCE</p>
+                  <p>Speed: <strong style={{ color: blue }}>{wpm} WPM</strong></p>
+                  <p>Accuracy: <strong>{accuracy}%</strong></p>
+                  <p>Errors: <strong style={{ color: "#e25b63" }}>{errors}</strong></p>
                   <div style={{ height: 8, borderRadius: 10, background: border, overflow: "hidden" }}>
-                    <div style={{ width: `${Math.min(100, wpm / target * 100)}%`, height: "100%", background: blue, transition: "width .3s" }} />
+                    <div style={{ width: `${Math.min(100, wpm / target * 100)}%`, height: "100%", background: blue }} />
                   </div>
                   <p style={{ color: muted, fontSize: 12 }}>Target progress: {Math.min(100, Math.round(wpm / target * 100))}%</p>
                 </section>
@@ -360,7 +426,7 @@ export default function App() {
 
           {page === "Practice" && (
             <section style={{ ...panel, marginTop: 18 }}>
-              <h3 style={{ marginTop: 0 }}>Choose your passage</h3>
+              <h3>Choose your passage</h3>
               <input style={input} placeholder="Search passages..." value={search} onChange={e => setSearch(e.target.value)} />
               <div style={{ display: "flex", gap: 7, flexWrap: "wrap", margin: "13px 0" }}>
                 {categories.map(c => (
@@ -375,25 +441,27 @@ export default function App() {
               </div>
               <div className="passageList">
                 {filtered.map(p => (
-                  <button key={p.id} className={`passageItem ${selected === p.id ? "selected" : ""}`} disabled={started} onClick={() => changePassage(p.id)}>
+                  <button key={p.id} className={`passageItem ${selected === p.id ? "selected" : ""}`} disabled={started} onClick={() => {
+                    setSelected(p.id);
+                    setTyped("");
+                    setRemaining(duration * 60);
+                  }}>
                     <strong>{p.title}</strong>
-                    <div style={{ color: muted, fontSize: 12, marginTop: 5 }}>{p.category} · {p.text.length} characters</div>
+                    <div style={{ color: muted, fontSize: 12, marginTop: 5 }}>{p.category}</div>
                   </button>
                 ))}
-                {filtered.length === 0 && <p style={{ color: muted }}>No passages found.</p>}
+                {filtered.length === 0 && <p>No passages found.</p>}
               </div>
-              <p style={{ color: muted, fontSize: 12 }}>50 passages available · Select a passage before starting your test.</p>
             </section>
           )}
 
           {page === "Dashboard" && (
             <section style={panel}>
-              <h2>Welcome to your progress dashboard</h2>
-              <p style={{ color: muted }}>Your typing results are saved in this browser.</p>
-              <h3>Target speed: {target} WPM</h3>
+              <h2>Your Progress</h2>
               <p>Personal best: <strong>{best} WPM</strong></p>
               <p>Average speed: <strong>{average} WPM</strong></p>
               <p>Completed tests: <strong>{history.length}</strong></p>
+              <p>Target speed: <strong>{target} WPM</strong></p>
               <button style={button} onClick={() => setPage("Practice")}>Start practising</button>
             </section>
           )}
@@ -402,21 +470,13 @@ export default function App() {
             <section style={panel}>
               <h2>Previous test results</h2>
               {history.length === 0 ? (
-                <p style={{ color: muted }}>No tests completed yet. Finish a practice test to see your results here.</p>
-              ) : (
-                history.map((s, i) => (
-                  <div key={i} style={{ padding: "14px 0", borderBottom: `1px solid ${border}`, display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <div>
-                      <strong>{s.wpm} WPM</strong>
-                      <p style={{ color: muted, fontSize: 12, margin: "5px 0 0" }}>{s.date}</p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <strong>{s.accuracy}%</strong>
-                      <p style={{ color: muted, fontSize: 12, margin: "5px 0 0" }}>{Math.floor(s.duration / 60)}m {s.duration % 60}s</p>
-                    </div>
-                  </div>
-                ))
-              )}
+                <p style={{ color: muted }}>No tests completed yet.</p>
+              ) : history.map((s, i) => (
+                <div key={i} style={{ padding: 14, borderBottom: `1px solid ${border}` }}>
+                  <strong>{s.wpm} WPM</strong> · {s.accuracy}% accuracy
+                  <p style={{ color: muted, fontSize: 12 }}>{s.date}</p>
+                </div>
+              ))}
               <button style={{ ...button, background: "#dc5964", marginTop: 18 }} onClick={() => {
                 if (window.confirm("Delete all practice history?")) setHistory([]);
               }}>Clear history</button>
