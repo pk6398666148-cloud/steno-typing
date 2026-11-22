@@ -49,6 +49,8 @@ export default function App() {
   const [focusMode, setFocusMode] = useState(false);
   const [typed, setTyped] = useState("");
   const typedRef = useRef("");
+  const passageRef = useRef<HTMLDivElement>(null);
+  const currentCharRef = useRef<HTMLSpanElement>(null);
   const startTime = useRef<number | null>(null);
   const finishedRef = useRef(false);
 
