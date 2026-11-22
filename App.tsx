@@ -419,7 +419,7 @@ export default function App() {
 <button className="secondary-btn"
   onClick={() => setFocusMode(!focusMode)}>
   {focusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
-</button>
+</button>}
   <textarea
     className="typing-area"
     style={{ fontFamily: font, fontSize: `${fontSize}px` }}
