@@ -452,7 +452,40 @@ const currentLine = Math.min(
             </div>
 
             <h2 className="section-title">{usingPdf ? "Your PDF Passage" : mode === "Word Count" ? `${wordGoal}-Word Challenge` : selectedPassage.title}</h2>
-            <div className="passage">{activeText}</div>
+            <div className="passage-window" ref={passageRef}>
+  {passageLines.slice(currentLine, currentLine + 3).map((line, visibleIndex) => {
+    const lineIndex = currentLine + visibleIndex;
+    const lineStart = passageLineStarts[lineIndex];
+
+    return (
+      <div className="passage-line" key={lineIndex}>
+        {line.split("").map((char, charIndex) => {
+          const absoluteIndex = lineStart + charIndex;
+          const isCurrent = absoluteIndex === typed.length;
+          const isCorrect =
+            absoluteIndex < typed.length &&
+            typed[absoluteIndex] === activeText[absoluteIndex];
+
+          return (
+            <span
+              key={charIndex}
+              ref={isCurrent ? currentCharRef : null}
+              className={
+                isCurrent
+                  ? "current-char"
+                  : absoluteIndex < typed.length
+                    ? isCorrect ? "correct-char" : "incorrect-char"
+                    : ""
+              }
+            >
+              {char}
+            </span>
+          );
+        })}
+      </div>
+    );
+  })}
+</div>
            <div>
   <select value={font} onChange={e => setFont(e.target.value)}>
     <option>Arial</option>
