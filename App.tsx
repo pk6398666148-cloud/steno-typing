@@ -59,6 +59,9 @@ export default function App() {
 
   const [selectedDay, setSelectedDay] = useState(1);
   const [wordAnswer, setWordAnswer] = useState("");
+  const [wordIndex, setWordIndex] = useState(0);
+  const [wordCorrect, setWordCorrect] = useState(0);
+  const [wordFinished, setWordFinished] = useState(false);
   const [wordFeedback, setWordFeedback] = useState("");
   const [focusAnswer, setFocusAnswer] = useState("");
   const [focusFeedback, setFocusFeedback] = useState("");
