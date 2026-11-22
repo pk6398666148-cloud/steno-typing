@@ -416,7 +416,10 @@ export default function App() {
 
   <input type="range" min="14" max="28" value={fontSize}
     onChange={e => setFontSize(Number(e.target.value))} />
-
+<button className="secondary-btn"
+  onClick={() => setFocusMode(!focusMode)}>
+  {focusMode ? "Exit Focus Mode" : "Enter Focus Mode"}
+</button>
   <textarea
     className="typing-area"
     style={{ fontFamily: font, fontSize: `${fontSize}px` }}
