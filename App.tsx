@@ -72,6 +72,29 @@ export default function App() {
   const selectedPassage = allPassages.find(p => p.id === selectedId) ?? passages[0];
 
   const activeText = usingPdf
+    const passageLines = useMemo(() => {
+  const words = activeText.split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+
+  words.forEach(word => {
+    if ((line + " " + word).trim().length > 65) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = (line + " " + word).trim();
+    }
+  });
+
+  if (line) lines.push(line);
+
+  return lines;
+}, [activeText]);
+
+const currentLine = Math.min(
+  passageLines.length - 1,
+  Math.floor(typed.length / 65)
+);
     ? pdfText
     : mode === "Word Count"
       ? makeChallenge(wordGoal)
