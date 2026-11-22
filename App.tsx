@@ -46,6 +46,7 @@ export default function App() {
   const [pdfMessage, setPdfMessage] = useState("");
   const [font, setFont] = useState("Arial");
   const [fontSize, setFontSize] = useState(18);
+  const [focusMode, setFocusMode] = useState(false);
   const [typed, setTyped] = useState("");
   const typedRef = useRef("");
   const startTime = useRef<number | null>(null);
