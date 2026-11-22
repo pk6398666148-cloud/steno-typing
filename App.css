@@ -404,3 +404,28 @@ select, input[type="range"] {
   background: #ffe0e0;
   color: #c62828;
 }
+.passage-window + .typing-area {
+  margin-top: 0;
+}
+
+.typing-area {
+  width: 100%;
+  min-height: 180px;
+  box-sizing: border-box;
+  padding: 16px;
+  font-size: 18px;
+  line-height: 1.8;
+  resize: vertical;
+  border-radius: 10px;
+}
+
+@media (max-width: 600px) {
+  .passage-window {
+    font-size: 15px;
+    padding: 8px;
+  }
+
+  .typing-area {
+    font-size: 16px;
+  }
+}
