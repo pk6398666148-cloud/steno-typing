@@ -71,7 +71,55 @@ export default function App() {
   const allPassages = useMemo(() => [...passages, ...saved], [saved]);
   const selectedPassage = allPassages.find(p => p.id === selectedId) ?? passages[0];
 
+  
   const activeText = usingPdf
+    ? pdfText
+    : mode === "Word Count"
+      ? makeChallenge(wordGoal)
+      : mode === "Timed"
+        ? makeChallenge(3000)
+        : selectedPassage.text;
+
+  const passageLines = useMemo(() => {
+    const words = activeText.split(/\s+/).filter(Boolean);
+    const lines: string[] = [];
+    let line = "";
+
+    words.forEach(word => {
+      const candidate = line ? `${line} ${word}` : word;
+
+      if (candidate.length > 65 && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    });
+
+    if (line) lines.push(line);
+
+    return lines;
+  }, [activeText]);
+
+  const passageLineStarts = useMemo(() => {
+    let position = 0;
+
+    return passageLines.map(line => {
+      const start = position;
+      position += line.length + 1;
+      return start;
+    });
+  }, [passageLines]);
+
+  const foundLine = passageLineStarts.findIndex(
+    (start, index) =>
+      typed.length < (passageLineStarts[index + 1] ?? activeText.length + 1)
+  );
+
+  const currentLine = foundLine === -1
+    ? Math.max(0, passageLines.length - 1)
+    : foundLine;
+
     const passageLines = useMemo(() => {
   const words = activeText.split(/\s+/);
   const lines: string[] = [];
