@@ -405,7 +405,7 @@ export default function App() {
             </div>
 
             <h2 className="section-title">{usingPdf ? "Your PDF Passage" : mode === "Word Count" ? `${wordGoal}-Word Challenge` : selectedPassage.title}</h2>
-            {!focusMode && <div className="passage">{activeText}</div>}
+            <div className="passage">{activeText}</div>
            <div>
   <select value={font} onChange={e => setFont(e.target.value)}>
     <option>Arial</option>
