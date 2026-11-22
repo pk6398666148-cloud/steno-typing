@@ -405,7 +405,27 @@ export default function App() {
 
             <h2 className="section-title">{usingPdf ? "Your PDF Passage" : mode === "Word Count" ? `${wordGoal}-Word Challenge` : selectedPassage.title}</h2>
             <div className="passage">{activeText}</div>
-            <textarea className="typing-area" placeholder={running ? "Start typing here..." : "Press Start Practice to begin..."} value={typed} onChange={e => handleTyping(e.target.value)} disabled={!running || finished} spellCheck={false} />
+           <div>
+  <select value={font} onChange={e => setFont(e.target.value)}>
+    <option>Arial</option>
+    <option>Roboto</option>
+    <option>Georgia</option>
+    <option>Courier New</option>
+  </select>
+
+  <input type="range" min="14" max="28" value={fontSize}
+    onChange={e => setFontSize(Number(e.target.value))} />
+
+  <textarea
+    className="typing-area"
+    style={{ fontFamily: font, fontSize: `${fontSize}px` }}
+    placeholder={running ? "Start typing here..." : "Press Start Practice to begin..."}
+    value={typed}
+    onChange={e => handleTyping(e.target.value)}
+    disabled={!running || finished}
+    spellCheck={false}
+  />
+</div>
 
             {mode === "Word Count" && <div className="progress"><div className="progress-bar" style={{ width: `${Math.min(typedWords / wordGoal * 100, 100)}%` }} /></div>}
 
