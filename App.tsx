@@ -528,7 +528,7 @@ function submitSingleWord() {
                 <label>Upload PDF</label>
                 <input type="file" accept="application/pdf" disabled={running} onChange={e => handlePdfUpload(e.target.files?.[0])} />
                 <p className="muted">{pdfMessage}</p>
-                {usingPdf && <button className="secondary-btn" onClick={() => { setUsingPdf(false); setPdfMessage(""); resetTest(); }}>Use Regular Passage</button>}
+                {usingPdf && <button className="secondary-btn" onClick={() => { setUsingPdf(false); setPdfMessage(""); resetTest(); }}>Use Regular Passage</button>
               </div>
             </div>
 
