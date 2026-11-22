@@ -338,3 +338,22 @@ select option {
     padding: 18px;
   }
 }
+.card:hover {
+  background: #fffdf5;
+  border-color: #ead89e;
+}
+
+.nav-links button.active {
+  background: #fff8df;
+  color: #987018;
+}
+
+.badge {
+  background: #fff8df;
+  border-color: #f0e0ad;
+  color: #987018;
+}
+
+.hero {
+  background: linear-gradient(120deg, #ffffff, #fff8df);
+}
