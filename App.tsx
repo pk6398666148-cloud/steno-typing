@@ -355,7 +355,47 @@ const currentLine = Math.min(
     setPage("Error Analysis");
   }
 
-  function checkDailyWords()function submitSingleWord() {
+  function checkDailyWords() {
+  const entered = wordAnswer.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const mistakes = dailyWords.filter(
+    (word, index) => entered[index] !== word.toLowerCase()
+  );
+
+  if (entered.length !== 20 || mistakes.length > 0) {
+    setWordFeedback(
+      `You have ${mistakes.length + Math.abs(20 - entered.length)} word errors. Check the list and try again.`
+    );
+    return;
+  }
+
+  setCompletedDays(previous => [...new Set([...previous, selectedDay])]);
+  setWordFeedback("Excellent! All 20 words are correct. Day completed!");
+}
+
+function submitSingleWord() {
+  if (wordFinished) return;
+
+  const correct =
+    wordAnswer.trim().toLowerCase() === dailyWords[wordIndex].toLowerCase();
+
+  if (correct) {
+    setWordCorrect(previous => previous + 1);
+  }
+
+  setWordAnswer("");
+
+  const totalCorrect = wordCorrect + (correct ? 1 : 0);
+
+  if (wordIndex === 19) {
+    setWordFinished(true);
+
+    if (totalCorrect === 20) {
+      setCompletedDays(previous => [...new Set([...previous, selectedDay])]);
+    }
+  } else {
+    setWordIndex(previous => previous + 1);
+  }
+} {
   if (wordFinished) return;
 
   const correct = wordAnswer.trim().toLowerCase() === dailyWords[wordIndex].toLowerCase();
