@@ -282,7 +282,26 @@ export default function App() {
     setPage("Error Analysis");
   }
 
-  function checkDailyWords() {
+  function checkDailyWords()function submitSingleWord() {
+  if (wordFinished) return;
+
+  const correct = wordAnswer.trim().toLowerCase() === dailyWords[wordIndex].toLowerCase();
+
+  if (correct) {
+    setWordCorrect(previous => previous + 1);
+  }
+
+  setWordAnswer("");
+
+  if (wordIndex === 19) {
+    setWordFinished(true);
+    if (correct || wordCorrect + (correct ? 1 : 0) === 20) {
+      setCompletedDays(previous => [...new Set([...previous, selectedDay])]);
+    }
+  } else {
+    setWordIndex(previous => previous + 1);
+  }
+} {
     const entered = wordAnswer.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const mistakes = dailyWords.filter((word, index) => entered[index] !== word.toLowerCase());
 
